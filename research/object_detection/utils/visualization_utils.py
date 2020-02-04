@@ -14,10 +14,8 @@
 # ==============================================================================
 
 """A set of functions that are used for visualization.
-
 These functions often receive an image, perform some visualization on the image.
 The functions do not return a value, instead they modify the image itself.
-
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -40,6 +38,14 @@ import tensorflow as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
+
+label_array=[]
+# this label_array will store all the labels of detected items and percentage accuracies corresponding to them.
+corresponding_coordinates=[]
+#this corresponding_coordinates array will store the center coordinates of each and every box(detected) in the image.
+#for example if the model is being trained to detect image of a pen, the label_array will store "pen" and accuracy corresponding to it.
+#and at the same index as pen in the label_array, the corresponding_coordinates array will store the center coordinates of the box
+#which is created by the function "draw_bounding_box_on_image"
 
 _TITLE_LEFT_MARGIN = 10
 _TITLE_TOP_MARGIN = 10
@@ -72,13 +78,10 @@ STANDARD_COLORS = [
 
 def _get_multiplier_for_color_randomness():
   """Returns a multiplier to get semi-random colors from successive indices.
-
   This function computes a prime number, p, in the range [2, 17] that:
   - is closest to len(STANDARD_COLORS) / 10
   - does not divide len(STANDARD_COLORS)
-
   If no prime numbers in that range satisfy the constraints, p is returned as 1.
-
   Once p is established, it can be used as a multiplier to select
   non-consecutive colors from STANDARD_COLORS:
   colors = [(p * i) % len(STANDARD_COLORS) for i in range(20)]
@@ -100,7 +103,6 @@ def _get_multiplier_for_color_randomness():
 
 def save_image_array_as_png(image, output_path):
   """Saves an image (represented as a numpy array) to PNG.
-
   Args:
     image: a numpy array with shape [height, width, 3].
     output_path: path to which image should be written.
@@ -112,10 +114,8 @@ def save_image_array_as_png(image, output_path):
 
 def encode_image_array_as_png_str(image):
   """Encodes a numpy array into a PNG string.
-
   Args:
     image: a numpy array with shape [height, width, 3].
-
   Returns:
     PNG encoded image string.
   """
@@ -137,10 +137,8 @@ def draw_bounding_box_on_image_array(image,
                                      display_str_list=(),
                                      use_normalized_coordinates=True):
   """Adds a bounding box to an image (numpy array).
-
   Bounding box coordinates can be specified in either absolute (pixel) or
   normalized coordinates by setting the use_normalized_coordinates argument.
-
   Args:
     image: a numpy array with shape [height, width, 3].
     ymin: ymin of bounding box.
@@ -172,15 +170,12 @@ def draw_bounding_box_on_image(image,
                                display_str_list=(),
                                use_normalized_coordinates=True):
   """Adds a bounding box to an image.
-
   Bounding box coordinates can be specified in either absolute (pixel) or
   normalized coordinates by setting the use_normalized_coordinates argument.
-
   Each string in display_str_list is displayed on a separate line above the
   bounding box in black text on a rectangle filled with the input 'color'.
   If the top of the bounding box extends to the edge of the image, the strings
   are displayed below the bounding box.
-
   Args:
     image: a PIL.Image object.
     ymin: ymin of bounding box.
@@ -195,6 +190,14 @@ def draw_bounding_box_on_image(image,
       ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
       coordinates as absolute.
   """
+  
+  label_array.append(display_str_list)
+  #this array will contain all the detected objects and their accuracies.
+  corresponding_coordinates.append([(xmin+xmax)/2, (ymin+ymax)/2])
+  #appending the center coordinates of a box to the "corresponding_coordinates" array.
+  ##both these arrays, i.e. label_array and corresponding_coordinates array can be cleared by calling the function
+  #visualization_utils.clearer(), if multiple images are being iterated in a single tensorflow session. it has to be
+  #called before switching to the next image in the same tensorflow session.
   draw = ImageDraw.Draw(image)
   im_width, im_height = image.size
   if use_normalized_coordinates:
@@ -242,7 +245,6 @@ def draw_bounding_boxes_on_image_array(image,
                                        thickness=4,
                                        display_str_list_list=()):
   """Draws bounding boxes on image (numpy array).
-
   Args:
     image: a numpy array object.
     boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
@@ -254,7 +256,6 @@ def draw_bounding_boxes_on_image_array(image,
                            The reason to pass a list of strings for a
                            bounding box is that it might contain
                            multiple labels.
-
   Raises:
     ValueError: if boxes is not a [N, 4] array
   """
@@ -270,7 +271,6 @@ def draw_bounding_boxes_on_image(image,
                                  thickness=4,
                                  display_str_list_list=()):
   """Draws bounding boxes on image.
-
   Args:
     image: a PIL.Image object.
     boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
@@ -282,7 +282,6 @@ def draw_bounding_boxes_on_image(image,
                            The reason to pass a list of strings for a
                            bounding box is that it might contain
                            multiple labels.
-
   Raises:
     ValueError: if boxes is not a [N, 4] array
   """
@@ -297,13 +296,13 @@ def draw_bounding_boxes_on_image(image,
       display_str_list = display_str_list_list[i]
     draw_bounding_box_on_image(image, boxes[i, 0], boxes[i, 1], boxes[i, 2],
                                boxes[i, 3], color, thickness, display_str_list)
+  
 
 
 def create_visualization_fn(category_index, include_masks=False,
                             include_keypoints=False, include_track_ids=False,
                             **kwargs):
   """Constructs a visualization function that can be wrapped in a py_func.
-
   py_funcs only accept positional arguments. This function returns a suitable
   function with the correct positional argument mapping. The positional
   arguments in order are:
@@ -314,7 +313,6 @@ def create_visualization_fn(category_index, include_masks=False,
   [4-6]: masks (optional)
   [4-6]: keypoints (optional)
   [4-6]: track_ids (optional)
-
   -- Example 1 --
   vis_only_masks_fn = create_visualization_fn(category_index,
     include_masks=True, include_keypoints=False, include_track_ids=False,
@@ -322,7 +320,6 @@ def create_visualization_fn(category_index, include_masks=False,
   image = tf.py_func(vis_only_masks_fn,
                      inp=[image, boxes, classes, scores, masks],
                      Tout=tf.uint8)
-
   -- Example 2 --
   vis_masks_and_track_ids_fn = create_visualization_fn(category_index,
     include_masks=True, include_keypoints=False, include_track_ids=True,
@@ -330,7 +327,6 @@ def create_visualization_fn(category_index, include_masks=False,
   image = tf.py_func(vis_masks_and_track_ids_fn,
                      inp=[image, boxes, classes, scores, masks, track_ids],
                      Tout=tf.uint8)
-
   Args:
     category_index: a dict that maps integer ids to category dicts. e.g.
       {1: {1: 'dog'}, 2: {2: 'cat'}, ...}
@@ -342,14 +338,12 @@ def create_visualization_fn(category_index, include_masks=False,
       argument in the returned function.
     **kwargs: Additional kwargs that will be passed to
       visualize_boxes_and_labels_on_image_array.
-
   Returns:
     Returns a function that only takes tensors as positional arguments.
   """
 
   def visualization_py_func_fn(*args):
     """Visualization function that can be wrapped in a tf.py_func.
-
     Args:
       *args: First 4 positional arguments must be:
         image - uint8 numpy array with shape (img_height, img_width, 3).
@@ -360,7 +354,6 @@ def create_visualization_fn(category_index, include_masks=False,
         instance_masks - a numpy array of shape [N, image_height, image_width].
         keypoints - a numpy array of shape [N, num_keypoints, 2].
         track_ids - a numpy array of shape [N] with unique track ids.
-
     Returns:
       uint8 numpy array with shape (img_height, img_width, 3) with overlaid
       boxes.
@@ -417,7 +410,6 @@ def draw_bounding_boxes_on_image_tensors(images,
                                          min_score_thresh=0.2,
                                          use_normalized_coordinates=True):
   """Draws bounding boxes, masks, and keypoints on batch of image tensors.
-
   Args:
     images: A 4D uint8 image tensor of shape [N, H, W, C]. If C > 3, additional
       channels will be ignored. If C = 1, then we convert the images to RGB
@@ -444,7 +436,6 @@ def draw_bounding_boxes_on_image_tensors(images,
     use_normalized_coordinates: Whether to assume boxes and kepoints are in
       normalized coordinates (as opposed to absolute coordiantes).
       Default is True.
-
   Returns:
     4D image tensor of type uint8, with boxes drawn on top.
   """
@@ -508,10 +499,8 @@ def draw_side_by_side_evaluation_image(eval_dict,
                                        min_score_thresh=0.2,
                                        use_normalized_coordinates=True):
   """Creates a side-by-side image with detections and groundtruth.
-
   Bounding boxes (and instance masks, if available) are visualized on both
   subimages.
-
   Args:
     eval_dict: The evaluation dictionary returned by
       eval_util.result_dict_for_batched_example() or
@@ -522,7 +511,6 @@ def draw_side_by_side_evaluation_image(eval_dict,
     use_normalized_coordinates: Whether to assume boxes and kepoints are in
       normalized coordinates (as opposed to absolute coordiantes).
       Default is True.
-
   Returns:
     A list of [1, H, 2 * W, C] uint8 tensor. The subimage on the left
       corresponds to detections, while the subimage on the right corresponds to
@@ -645,7 +633,6 @@ def draw_keypoints_on_image_array(image,
                                   radius=2,
                                   use_normalized_coordinates=True):
   """Draws keypoints on an image (numpy array).
-
   Args:
     image: a numpy array with shape [height, width, 3].
     keypoints: a numpy array with shape [num_keypoints, 2].
@@ -666,7 +653,6 @@ def draw_keypoints_on_image(image,
                             radius=2,
                             use_normalized_coordinates=True):
   """Draws keypoints on an image.
-
   Args:
     image: a PIL.Image object.
     keypoints: a numpy array with shape [num_keypoints, 2].
@@ -690,14 +676,12 @@ def draw_keypoints_on_image(image,
 
 def draw_mask_on_image_array(image, mask, color='red', alpha=0.4):
   """Draws mask on an image.
-
   Args:
     image: uint8 numpy array with shape (img_height, img_height, 3)
     mask: a uint8 numpy array of shape (img_height, img_height) with
       values between either 0 or 1.
     color: color to draw the keypoints with. Default is red.
     alpha: transparency value between 0 and 1. (default: 0.4)
-
   Raises:
     ValueError: On incorrect data type for image or masks.
   """
@@ -741,12 +725,10 @@ def visualize_boxes_and_labels_on_image_array(
     skip_labels=False,
     skip_track_ids=False):
   """Overlay labeled boxes on an image with formatted scores and label names.
-
   This function groups boxes that correspond to the same location
   and creates a display string for each detection and overlays these
   on the image. Note that this function modifies the image in place, and returns
   that same image.
-
   Args:
     image: uint8 numpy array with shape (img_height, img_width, 3)
     boxes: a numpy array of shape [N, 4]
@@ -780,7 +762,6 @@ def visualize_boxes_and_labels_on_image_array(
     skip_scores: whether to skip score when drawing a single detection
     skip_labels: whether to skip label when drawing a single detection
     skip_track_ids: whether to skip track id when drawing a single detection
-
   Returns:
     uint8 numpy array with shape (img_height, img_width, 3) with overlaid boxes.
   """
@@ -876,10 +857,8 @@ def visualize_boxes_and_labels_on_image_array(
 
 def add_cdf_image_summary(values, name):
   """Adds a tf.summary.image for a CDF plot of the values.
-
   Normalizes `values` such that they sum to 1, plots the cumulative distribution
   function and creates a tf image summary.
-
   Args:
     values: a 1-D float32 tensor containing the values.
     name: name for the image summary.
@@ -907,9 +886,7 @@ def add_cdf_image_summary(values, name):
 
 def add_hist_image_summary(values, bins, name):
   """Adds a tf.summary.image for a histogram plot of the values.
-
   Plots the histogram of values and creates a tf image summary.
-
   Args:
     values: a 1-D float32 tensor containing the values.
     bins: bin edges which will be directly passed to np.histogram.
@@ -933,10 +910,15 @@ def add_hist_image_summary(values, bins, name):
   hist_plot = tf.py_func(hist_plot, [values, bins], tf.uint8)
   tf.summary.image(name, hist_plot)
 
+def clearer():
+  #this function clears the label_array and corresponding_coordinates array.
+  #if both of these arrays are being used for a single image, this function has to be called before
+  #switching to the next image.
+  label_array.clear()
+  corresponding_coordinates.clear()
 
 class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class responsible for visualizations during evaluation.
-
   Currently, summary images are not run during evaluation. One way to produce
   evaluation images in Tensorboard is to provide tf.summary.image strings as
   `value_ops` in tf.estimator.EstimatorSpec's `eval_metric_ops`. This class is
@@ -952,7 +934,6 @@ class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
                use_normalized_coordinates=True,
                summary_name_prefix='evaluation_image'):
     """Creates an EvalMetricOpsVisualization.
-
     Args:
       category_index: A category index (dictionary) produced from a labelmap.
       max_examples_to_draw: The maximum number of example summaries to produce.
@@ -987,7 +968,6 @@ class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
 
   def get_estimator_eval_metric_ops(self, eval_dict):
     """Returns metric ops for use in tf.estimator.EstimatorSpec.
-
     Args:
       eval_dict: A dictionary that holds an image, groundtruth, and detections
         for a batched example. Note that, we use only the first example for
@@ -1017,7 +997,6 @@ class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
         fields.DetectionResultFields.detection_keypoints - (optional)
           [batch_size, max_num_boxes, num_keypoints, 2] float32 tensor with
           keypoints.
-
     Returns:
       A dictionary of image summary names to tuple of (value_op, update_op). The
       `update_op` is the same for all items in the dictionary, and is
@@ -1061,13 +1040,10 @@ class EvalMetricOpsVisualization(six.with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
   def images_from_evaluation_dict(self, eval_dict):
     """Converts evaluation dictionary into a list of image tensors.
-
     To be overridden by implementations.
-
     Args:
       eval_dict: A dictionary with all the necessary information for producing
         visualizations.
-
     Returns:
       A list of [1, H, W, C] uint8 tensors.
     """
